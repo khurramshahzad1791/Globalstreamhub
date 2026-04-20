@@ -5,24 +5,23 @@ import os
 from datetime import datetime
 
 def fetch_trending_movies():
-    """Fetch trending movies using Streaming Availability API via RapidAPI."""
+    """Fetch popular movies using Streaming Availability API's filters endpoint."""
     api_key = os.environ.get("RAPIDAPI_KEY")
     if not api_key:
         raise Exception("RAPIDAPI_KEY environment variable not set")
     
-    url = "https://streaming-availability.p.rapidapi.com/search/title"
+    url = "https://streaming-availability.p.rapidapi.com/shows/search/filters"
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": "streaming-availability.p.rapidapi.com"
     }
     
-    # Search for popular movies (using a generic popular keyword)
-    # Note: The API doesn't have a dedicated 'trending' endpoint, so we search for 'popular' 
-    # and take the results. You can adjust the query to 'top', 'trending', etc.
+    # Parameters to get popular movies (sorted by popularity descending)
     params = {
-        "title": "popular",  # This returns popular results
-        "country": "us",
+        "country": "us",  # You can change this to a global view or make it dynamic
         "show_type": "movie",
+        "order_by": "popularity",
+        "order_direction": "desc",
         "output_language": "en"
     }
     
