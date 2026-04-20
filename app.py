@@ -46,7 +46,7 @@ selected_country = st.sidebar.selectbox("🌍 Select your country", list(countri
 country_code = countries[selected_country]
 
 # -------------------------------
-# COUNTRY-SPECIFIC M3U PLAYLISTS
+# COUNTRY-SPECIFIC M3U PLAYLISTS (unchanged)
 # -------------------------------
 COUNTRY_PLAYLISTS = {
     "India": "https://iptv-org.github.io/iptv/countries/in.m3u",
@@ -73,38 +73,67 @@ COUNTRY_PLAYLISTS = {
 GLOBAL_PLAYLIST = "https://iptv-org.github.io/iptv/index.m3u"
 
 # -------------------------------
-# FREE STREAMING SERVICES
+# EXPANDED FREE STREAMING SERVICES (Global + Regional)
 # -------------------------------
-FREE_SERVICES = {
-    "Tubi": "https://tubitv.com", "Plex": "https://watch.plex.tv", "Pluto TV": "https://pluto.tv",
-    "Crackle": "https://www.crackle.com", "Xumo Play": "https://play.xumo.com",
-    "Popcornflix": "https://popcornflix.com", "Kanopy": "https://www.kanopy.com",
-    "Roku Channel": "https://therokuchannel.roku.com"
+# For display in "Free Services" tab
+FREE_SERVICES_DISPLAY = {
+    "Tubi": "https://tubitv.com",
+    "Plex": "https://watch.plex.tv",
+    "Pluto TV": "https://pluto.tv",
+    "Crackle": "https://www.crackle.com",
+    "Xumo Play": "https://play.xumo.com",
+    "Popcornflix": "https://popcornflix.com",
+    "Kanopy": "https://www.kanopy.com",
+    "Roku Channel": "https://therokuchannel.roku.com",
+    "MX Player (India)": "https://www.mxplayer.in",
+    "JioCinema": "https://www.jiocinema.com",
+    "YouTube (Official)": "https://www.youtube.com",
+    "ShemarooMe": "https://www.shemaroome.com",
+    "Sony LIV": "https://www.sonyliv.com",
+    "ZEE5": "https://www.zee5.com",
+    "Hungama Play": "https://www.hungama.com",
+    "iQIYI": "https://www.iq.com",
+    "WeTV": "https://wetv.vip",
+    "Viki": "https://www.viki.com",
+    "KOCOWA": "https://www.kocowa.com",
+    "Viu": "https://www.viu.com"
 }
 
+# Lists for easy iteration
+GLOBAL_SERVICES = ["Tubi", "Plex", "Pluto TV", "Crackle", "Xumo Play", "Popcornflix", "Kanopy", "Roku Channel"]
+REGIONAL_SERVICES = ["MX Player (India)", "JioCinema", "YouTube (Official)", "ShemarooMe", "Sony LIV", "ZEE5", "Hungama Play", "iQIYI", "WeTV", "Viki", "KOCOWA", "Viu"]
+
 # -------------------------------
-# SESSION & CACHING
+# HELPER: Generate regional search link
 # -------------------------------
-session = requests.Session()
-retries = Retry(total=2, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
-session.mount('http://', HTTPAdapter(max_retries=retries))
-session.mount('https://', HTTPAdapter(max_retries=retries))
+def get_region_service_link(service_name, movie_title):
+    encoded_title = requests.utils.quote(movie_title)
+    links = {
+        "MX Player (India)": f"https://www.mxplayer.in/search?q={encoded_title}",
+        "JioCinema": f"https://www.jiocinema.com/search?q={encoded_title}",
+        "YouTube (Official)": f"https://www.youtube.com/results?search_query={encoded_title}+full+movie",
+        "ShemarooMe": f"https://www.shemaroome.com/search?q={encoded_title}",
+        "Sony LIV": f"https://www.sonyliv.com/search/{encoded_title}",
+        "ZEE5": f"https://www.zee5.com/search?q={encoded_title}",
+        "Hungama Play": f"https://www.hungama.com/search/{encoded_title}",
+        "iQIYI": f"https://www.iq.com/search?query={encoded_title}",
+        "WeTV": f"https://wetv.vip/en/search?query={encoded_title}",
+        "Viki": f"https://www.viki.com/search?q={encoded_title}",
+        "KOCOWA": f"https://www.kocowa.com/search?q={encoded_title}",
+        "Viu": f"https://www.viu.com/ott/us/en-us/search?q={encoded_title}"
+    }
+    return links.get(service_name)
 
 # -------------------------------
 # FUNCTION: LOAD TRENDING MOVIES FROM LOCAL JSON
 # -------------------------------
-@st.cache_data(ttl=43200, show_spinner=False)  # 12 hours cache
+@st.cache_data(ttl=43200, show_spinner=False)
 def load_trending_movies():
-    """Load trending movies from the locally cached JSON file (updated daily by GitHub Action)."""
     try:
         with open('trending_movies.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
             return data.get('movies', [])
-    except FileNotFoundError:
-        st.warning("⚠️ Trending movies list is being prepared. Please check back later.")
-        return []
-    except json.JSONDecodeError:
-        st.error("⚠️ Error reading trending movies cache.")
+    except:
         return []
 
 # -------------------------------
@@ -189,19 +218,26 @@ def get_streaming_link(movie_data, service_name):
     return info.get(key, {}).get('link')
 
 # -------------------------------
-# UI TABS (Now with Trending Tab)
+# SESSION
 # -------------------------------
-tab_trending, tab_live, tab_movies, tab_search = st.tabs(["🔥 Trending Now", "📡 Live TV", "🎬 Free Services", "🔍 Search"])
+session = requests.Session()
+retries = Retry(total=2, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+session.mount('http://', HTTPAdapter(max_retries=retries))
+session.mount('https://', HTTPAdapter(max_retries=retries))
 
-# ========== TRENDING NOW TAB ==========
+# -------------------------------
+# UI TABS
+# -------------------------------
+tab_trending, tab_live, tab_free, tab_search = st.tabs(["🔥 Trending Now", "📡 Live TV", "🎬 Free Services", "🔍 Search"])
+
+# ========== TRENDING TAB ==========
 with tab_trending:
     st.subheader(f"🔥 Trending Movies in {selected_country}")
-    st.caption("Popular movies updated daily. Click any movie to see where you can watch it for free.")
+    st.caption("Popular movies updated daily. Click 'Find' to check availability in your country.")
     
     trending_movies = load_trending_movies()
     
     if trending_movies:
-        # Show first 20 trending movies in a grid
         for i in range(0, min(len(trending_movies), 20), 4):
             cols = st.columns(4)
             for j in range(4):
@@ -212,7 +248,7 @@ with tab_trending:
                     year = movie.get('year', 'N/A')
                     rating = movie.get('imdbRating', 'N/A')
                     poster = movie.get('posterPath', '')
-                    poster_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster else None
+                    poster_url = poster if poster.startswith('http') else None
                     
                     with cols[j]:
                         if poster_url:
@@ -222,16 +258,26 @@ with tab_trending:
                         st.markdown(f"**{title}** ({year})")
                         st.caption(f"⭐ {rating}")
                         
-                        # Button to search for this movie
                         if st.button(f"🔍 Find '{title}'", key=f"trending_{idx}_{title}"):
                             with st.spinner(f"Searching for {title}..."):
                                 results = search_movies_rapidapi(title, country_code)
                                 if results:
                                     movie_data = results[0]
-                                    links = [(s, get_streaming_link(movie_data, s)) for s in FREE_SERVICES if get_streaming_link(movie_data, s)]
+                                    # Try global services first
+                                    links = []
+                                    for srv in GLOBAL_SERVICES:
+                                        link = get_streaming_link(movie_data, srv)
+                                        if link:
+                                            links.append((srv, link))
+                                    # If none, add regional search links
+                                    if not links:
+                                        for srv in REGIONAL_SERVICES:
+                                            rlink = get_region_service_link(srv, title)
+                                            if rlink:
+                                                links.append((srv, rlink))
                                     if links:
                                         st.markdown("**🍿 Watch for free on:**")
-                                        for srv, link in links[:4]:
+                                        for srv, link in links[:6]:
                                             st.link_button(srv, link, use_container_width=True)
                                     else:
                                         st.info(f"⚠️ '{title}' not available on free services in {selected_country}.")
@@ -239,7 +285,7 @@ with tab_trending:
                                     st.info(f"Could not find streaming info for '{title}'.")
                         st.divider()
     else:
-        st.info("Trending movies will appear here after the first daily update. Please check back later.")
+        st.info("Trending movies will appear after the first daily update.")
 
 # ========== LIVE TV TAB (unchanged) ==========
 with tab_live:
@@ -266,27 +312,47 @@ with tab_live:
                             st.link_button("▶️ Watch", ch.get('stream_url','#'), use_container_width=True)
     else:
         st.warning(f"No channels found for {selected_country}. Try another country.")
-        st.info("💡 Note: Free IPTV playlists rely on community-maintained sources.")
 
-# ========== FREE SERVICES TAB (unchanged) ==========
-with tab_movies:
+# ========== FREE SERVICES TAB (expanded) ==========
+with tab_free:
     st.subheader("🎬 Browse Free Streaming Services")
-    st.caption("These services are free, ad-supported, and available in select regions.")
-    cols = st.columns(4)
-    for idx, (name, url) in enumerate(FREE_SERVICES.items()):
-        with cols[idx % 4]:
-            st.markdown(f"### {name}")
-            st.link_button(f"Open {name} →", url, use_container_width=True)
-            st.caption("Free, ad-supported")
+    st.caption("All services are free, ad-supported, and legal. Click to open the website.")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown("#### 🌍 Global")
+        for srv in ["Tubi", "Plex", "Pluto TV", "Crackle", "Xumo Play", "Popcornflix", "Kanopy", "Roku Channel"]:
+            st.link_button(srv, FREE_SERVICES_DISPLAY[srv], use_container_width=True)
+    with col2:
+        st.markdown("#### 🇮🇳 India")
+        for srv in ["MX Player (India)", "JioCinema", "YouTube (Official)", "ShemarooMe", "Sony LIV", "ZEE5", "Hungama Play"]:
+            st.link_button(srv, FREE_SERVICES_DISPLAY[srv], use_container_width=True)
+    with col3:
+        st.markdown("#### 🇨🇳 China")
+        for srv in ["iQIYI", "WeTV"]:
+            st.link_button(srv, FREE_SERVICES_DISPLAY[srv], use_container_width=True)
+        st.markdown("#### 🇰🇷 Korea")
+        for srv in ["Viki", "KOCOWA", "Viu"]:
+            st.link_button(srv, FREE_SERVICES_DISPLAY[srv], use_container_width=True)
+    with col4:
+        st.markdown("#### 💡 Tips")
+        st.info("Use the **Search** tab to find a specific movie.\n\nFor Indian movies, try '3 Idiots', 'Dangal', 'RRR'.\n\nFor Korean, try 'Parasite', 'Train to Busan'.")
 
-# ========== SEARCH TAB (unchanged) ==========
+# ========== SEARCH TAB (improved) ==========
 with tab_search:
     st.subheader(f"🔍 Search Movies in {selected_country}")
-    st.caption("Search for any movie – we'll show you all free, legal places to watch it.")
+    st.caption("Search for any movie – we'll show free, legal watch options (global + regional).")
+    
     query = st.text_input("Enter movie title", placeholder="e.g., 3 Idiots, Parasite, Train to Busan...")
+    
     if query:
+        # Hint for common misspelling
+        if query.lower() == "3 idiot":
+            st.info("💡 Did you mean **'3 Idiots'** (with 's')? Try that for better results.")
+        
         with st.spinner(f"Searching for '{query}' in {selected_country}..."):
             results = search_movies_rapidapi(query, country_code)
+        
         if results:
             st.success(f"✨ Found {len(results)} results")
             for movie in results[:20]:
@@ -295,7 +361,8 @@ with tab_search:
                 rating = movie.get('imdbRating', 'N/A')
                 overview = movie.get('overview', '')[:300]
                 poster = movie.get('posterPath', '')
-                poster_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster else None
+                poster_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster and poster.startswith('/') else (poster if poster and poster.startswith('http') else None)
+                
                 col1, col2 = st.columns([1,3])
                 with col1:
                     st.image(poster_url or "https://via.placeholder.com/150x225?text=No+Poster", width=150)
@@ -303,16 +370,31 @@ with tab_search:
                     st.markdown(f"### {title} ({year})")
                     st.caption(f"⭐ {rating}")
                     st.write(overview)
-                    links = [(s, get_streaming_link(movie, s)) for s in FREE_SERVICES if get_streaming_link(movie, s)]
+                    
+                    # Collect links: first from RapidAPI global services
+                    links = []
+                    for srv in GLOBAL_SERVICES:
+                        link = get_streaming_link(movie, srv)
+                        if link:
+                            links.append((srv, link))
+                    
+                    # If no global links, add regional search links
+                    if not links:
+                        for srv in REGIONAL_SERVICES:
+                            rlink = get_region_service_link(srv, title)
+                            if rlink:
+                                links.append((srv, rlink))
+                    
                     if links:
                         st.markdown("**🍿 Watch for free on:**")
-                        for srv, link in links[:4]:
+                        for srv, link in links[:6]:
                             st.link_button(srv, link, use_container_width=True)
                     else:
-                        st.info(f"⚠️ Not available on free services in {selected_country}.")
+                        st.info(f"⚠️ '{title}' not available on free services in {selected_country}.")
+                        st.caption("Try changing your country selection or check spelling.")
                 st.divider()
         else:
-            st.info(f"No movies found for '{query}' in {selected_country}.")
+            st.info(f"No movies found for '{query}' in {selected_country}. Try a different title or check spelling (e.g., '3 Idiots' not '3 idiot').")
 
 st.divider()
 st.caption(f"Global FAST Stream Hub • Aggregates free ad-supported content • Updated {datetime.now().strftime('%Y-%m-%d %H:%M')}")
