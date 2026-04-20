@@ -5,19 +5,25 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
+# Give the workflow write permission to the repository
+permissions:
+  contents: write
+
 jobs:
   update-cache:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install requests
-      - env:
-          IMDB_API_KEY: ${{ secrets.IMDB_API_KEY }}
-        run: python update_trending_cache.py
+      - run: python update_trending_cache.py
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Auto-update trending movies cache"
           file_pattern: trending_movies.json
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
