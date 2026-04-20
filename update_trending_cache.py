@@ -5,31 +5,28 @@ import os
 from datetime import datetime
 
 def fetch_trending_movies():
-    """Fetch popular movies using Streaming Availability API's filters endpoint."""
-    api_key = os.environ.get("RAPIDAPI_KEY")
+    """Fetch trending movies from IMDb Scraper API (free, no credit card)."""
+    api_key = os.environ.get("IMDB_API_KEY")
     if not api_key:
-        raise Exception("RAPIDAPI_KEY environment variable not set")
+        raise Exception("IMDB_API_KEY environment variable not set")
     
-    url = "https://streaming-availability.p.rapidapi.com/shows/search/filters"
-    headers = {
-        "X-RapidAPI-Key": api_key,
-        "X-RapidAPI-Host": "streaming-availability.p.rapidapi.com"
-    }
+    url = "https://imdb-scraper-api.omkar.cloud/imdb/most-popular-movies"
+    headers = {"API-Key": api_key}
     
-    # Parameters to get popular movies (sorted by popularity descending)
-    params = {
-        "country": "us",  # You can change this to a global view or make it dynamic
-        "show_type": "movie",
-        "order_by": "popularity",
-        "order_direction": "desc",
-        "output_language": "en"
-    }
-    
-    response = requests.get(url, headers=headers, params=params, timeout=15)
+    response = requests.get(url, headers=headers, timeout=15)
     response.raise_for_status()
     data = response.json()
-    results = data.get('result', [])
-    return results[:50]  # Keep top 50
+    
+    # The API returns a list of movies. We'll map fields to match what app.py expects.
+    movies = []
+    for item in data[:50]:  # Limit to 50
+        movies.append({
+            "title": item.get("title", "Unknown"),
+            "year": item.get("release_date", "")[:4] if item.get("release_date") else "N/A",
+            "imdbRating": item.get("rating", "N/A"),
+            "posterPath": item.get("poster", "")  # Poster URL
+        })
+    return movies
 
 def save_trending_cache(movies):
     """Save trending movies to JSON file with metadata."""
@@ -43,7 +40,7 @@ def save_trending_cache(movies):
     print(f"✅ Saved {len(movies)} trending movies to trending_movies.json")
 
 if __name__ == "__main__":
-    print("🔄 Fetching trending movies from RapidAPI...")
+    print("🔄 Fetching trending movies from IMDb Scraper API...")
     trending = fetch_trending_movies()
     save_trending_cache(trending)
     print("🎉 Done!")
