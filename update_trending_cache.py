@@ -3,19 +3,23 @@ import json
 from datetime import datetime
 
 def fetch_trending_movies():
-    url = "https://raw.githubusercontent.com/sj611595/IMDB-Top-250/master/IMDB-Top-250.json"
+    # Working public JSON of IMDb Top 250 movies
+    url = "https://raw.githubusercontent.com/ShariqAnsari/IMDB-Top-250-Movies/master/top250.json"
     response = requests.get(url, timeout=15)
     response.raise_for_status()
     data = response.json()
+    
     movies = []
     for item in data[:50]:
-        year_str = item.get("year", "")
-        year = year_str[:4] if year_str else "N/A"
+        title = item.get("Title", "Unknown")
+        year = item.get("Year", "N/A")
+        rating = item.get("Rating", "N/A")
+        poster = item.get("Poster", "")
         movies.append({
-            "title": item.get("title", "Unknown"),
-            "year": year,
-            "imdbRating": item.get("rating", "N/A"),
-            "posterPath": item.get("poster", "")
+            "title": title,
+            "year": str(year)[:4],
+            "imdbRating": rating,
+            "posterPath": poster
         })
     return movies
 
