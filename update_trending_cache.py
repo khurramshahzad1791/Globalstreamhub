@@ -1,35 +1,25 @@
-# update_trending_cache.py
 import requests
 import json
-import os
 from datetime import datetime
 
 def fetch_trending_movies():
-    """Fetch trending movies from IMDb Scraper API (free, no credit card)."""
-    api_key = os.environ.get("IMDB_API_KEY")
-    if not api_key:
-        raise Exception("IMDB_API_KEY environment variable not set")
-    
-    url = "https://imdb-scraper-api.omkar.cloud/imdb/most-popular-movies"
-    headers = {"API-Key": api_key}
-    
-    response = requests.get(url, headers=headers, timeout=15)
+    url = "https://raw.githubusercontent.com/sj611595/IMDB-Top-250/master/IMDB-Top-250.json"
+    response = requests.get(url, timeout=15)
     response.raise_for_status()
     data = response.json()
-    
-    # The API returns a list of movies. We'll map fields to match what app.py expects.
     movies = []
-    for item in data[:50]:  # Limit to 50
+    for item in data[:50]:
+        year_str = item.get("year", "")
+        year = year_str[:4] if year_str else "N/A"
         movies.append({
             "title": item.get("title", "Unknown"),
-            "year": item.get("release_date", "")[:4] if item.get("release_date") else "N/A",
+            "year": year,
             "imdbRating": item.get("rating", "N/A"),
-            "posterPath": item.get("poster", "")  # Poster URL
+            "posterPath": item.get("poster", "")
         })
     return movies
 
 def save_trending_cache(movies):
-    """Save trending movies to JSON file with metadata."""
     cache_data = {
         "last_updated": datetime.now().isoformat(),
         "movie_count": len(movies),
@@ -37,10 +27,10 @@ def save_trending_cache(movies):
     }
     with open('trending_movies.json', 'w', encoding='utf-8') as f:
         json.dump(cache_data, f, indent=2, ensure_ascii=False)
-    print(f"✅ Saved {len(movies)} trending movies to trending_movies.json")
+    print(f"✅ Saved {len(movies)} movies to trending_movies.json")
 
 if __name__ == "__main__":
-    print("🔄 Fetching trending movies from IMDb Scraper API...")
-    trending = fetch_trending_movies()
-    save_trending_cache(trending)
+    print("🔄 Fetching top movies from public dataset...")
+    movies = fetch_trending_movies()
+    save_trending_cache(movies)
     print("🎉 Done!")
